@@ -15,7 +15,7 @@ export const GET = withErrorHandling(async (
   req: NextRequest,
   { params }: { params: { id: string } }
 ) => {
-  const { userId } = getAuth();
+  const { userId } = await getAuth(req);
 
   if (!userId) {
     return errorResponse("Unauthorized", 401);

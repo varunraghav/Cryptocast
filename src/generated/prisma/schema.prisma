@@ -1,0 +1,120 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// Adding seed configuration
+generator clientSeed {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+model User {
+  id         String      @id @default(cuid())
+  email      String      @unique
+  clerkId    String      @unique
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  watchlists Watchlist[]
+  alerts     Alert[]
+}
+
+model Watchlist {
+  id        String          @id @default(cuid())
+  name      String
+  userId    String
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  coins     WatchlistCoin[]
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@index([userId])
+}
+
+model WatchlistCoin {
+  id          String    @id @default(cuid())
+  watchlistId String
+  coinSymbol  String
+  watchlist   Watchlist @relation(fields: [watchlistId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([watchlistId, coinSymbol])
+  @@index([watchlistId])
+}
+
+model Alert {
+  id          String       @id @default(cuid())
+  userId      String
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        String // "sentiment", "price", "volume"
+  coinSymbol  String
+  threshold   Float
+  condition   String // "above", "below"
+  channels    String // JSON string of delivery channels
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  alertEvents AlertEvent[]
+
+  @@index([userId])
+  @@index([coinSymbol])
+}
+
+model AlertEvent {
+  id          String   @id @default(cuid())
+  alertId     String
+  alert       Alert    @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  triggeredAt DateTime @default(now())
+  details     String? // JSON string of event details
+
+  @@index([alertId])
+}
+
+model RawTweet {
+  id              String           @id @default(cuid())
+  scraperJobId    String?
+  influencer      String
+  content         String
+  fetchedAt       DateTime         @default(now())
+  sentimentScores SentimentScore[]
+
+  @@index([scraperJobId])
+  @@index([influencer])
+}
+
+model SentimentScore {
+  id           String   @id @default(cuid())
+  tweetId      String
+  tweet        RawTweet @relation(fields: [tweetId], references: [id], onDelete: Cascade)
+  coinSymbol   String
+  score        Float
+  window       String? // Time window of analysis
+  calculatedAt DateTime @default(now())
+
+  @@index([tweetId])
+  @@index([coinSymbol])
+}
+
+model MarketData {
+  id         String   @id @default(cuid())
+  coinSymbol String
+  price      Float
+  volume     Float
+  recordedAt DateTime @default(now())
+
+  @@index([coinSymbol])
+  @@index([recordedAt])
+}
